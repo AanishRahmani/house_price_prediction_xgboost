@@ -3,14 +3,10 @@ from pydantic import BaseModel
 import joblib
 import numpy as np
 from xgboost import XGBRegressor
-
 from fastapi.middleware.cors import CORSMiddleware
-
 from fastapi.responses import RedirectResponse
 
-
 app = FastAPI()
-
 
 app.add_middleware(
     CORSMiddleware,
@@ -81,7 +77,6 @@ location_map = {
     "Panathur": 51
 }
 
-
 class PredictInput(BaseModel):
     location: str
     bhk: int
@@ -91,39 +86,35 @@ class PredictInput(BaseModel):
 
 
 
-
-class HouseData(BaseModel):
-    total_sqft: float
-    bath: float
-    balcony: float
-    has_society: int
-    price_per_sqft: float
-    bhk: int
-    area_type_Other: int
-    area_type_Plot_Area: int
-    area_type_Super_builtup_Area: int
-    availability_Soon: int
-    location_target_enc: float
-
 @app.get("/")
-def hello():
+def root_redirect():
     return RedirectResponse(url="/predict")
+
+
+
+
+@app.get("/predict")
+def predict_info():
+    return {
+        "message": "Use POST /predict with JSON {location, bhk, bath, total_sqft} to get predicted price."
+    }
+
+
+
+
 @app.post("/predict")
 def predict_price(data: PredictInput):
     loc = data.location.strip()
-
 
     if loc not in location_map:
         loc = "other"
 
     loc_enc = location_map[loc]
 
-
     has_society = 1
     balcony = 1
-    price_per_sqft = 5000 
+    price_per_sqft = 5000  
 
-   
     features = np.array([[
         data.total_sqft,
         data.bath,
@@ -131,7 +122,7 @@ def predict_price(data: PredictInput):
         has_society,
         price_per_sqft,
         data.bhk,
-        0, 0, 0, 0,   
+        0, 0, 0, 0,  
         loc_enc
     ]])
 
