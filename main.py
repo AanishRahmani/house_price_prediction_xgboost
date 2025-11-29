@@ -12,7 +12,7 @@ app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],   # allow all frontends
+    allow_origins=["*"],   
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -20,7 +20,7 @@ app.add_middleware(
 
 
 model = XGBRegressor()
-model.load_model("/home/aanish/Desktop/ML_projects/b_house_price_prediction/trail.json")
+model.load_model("trail.json")
 
 
 location_map = {
@@ -89,7 +89,7 @@ class PredictInput(BaseModel):
 
 
 
-# Request model
+
 class HouseData(BaseModel):
     total_sqft: float
     bath: float
@@ -110,18 +110,18 @@ def hello():
 def predict_price(data: PredictInput):
     loc = data.location.strip()
 
-    # if location not in map, use 'other'
+
     if loc not in location_map:
         loc = "other"
 
     loc_enc = location_map[loc]
 
-    # Your derived features
+
     has_society = 1
     balcony = 1
-    price_per_sqft = 5000  # approx, used only to fill feature vector
+    price_per_sqft = 5000 
 
-    # Construct full feature vector for model
+   
     features = np.array([[
         data.total_sqft,
         data.bath,
@@ -129,7 +129,7 @@ def predict_price(data: PredictInput):
         has_society,
         price_per_sqft,
         data.bhk,
-        0, 0, 0, 0,   # area types + availability
+        0, 0, 0, 0,   
         loc_enc
     ]])
 
