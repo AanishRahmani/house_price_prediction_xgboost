@@ -1,12 +1,15 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse, HTMLResponse
 from pydantic import BaseModel
-import joblib
 import numpy as np
 from xgboost import XGBRegressor
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse
+import os
 
 app = FastAPI()
+
+
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -17,8 +20,14 @@ app.add_middleware(
 )
 
 
+
+
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "trail.json")
+
 model = XGBRegressor()
-model.load_model("trail.json")
+model.load_model(MODEL_PATH)
+
+
 
 
 location_map = {
@@ -77,6 +86,9 @@ location_map = {
     "Panathur": 51
 }
 
+
+
+
 class PredictInput(BaseModel):
     location: str
     bhk: int
@@ -86,35 +98,36 @@ class PredictInput(BaseModel):
 
 
 
-@app.get("/")
-def root_redirect():
+
+
+@app.get("/", include_in_schema=False)
+def redirect_root():
     return RedirectResponse(url="/predict")
 
 
-
-
-@app.get("/predict")
-def predict_info():
-    return {
-        "message": "Use POST /predict with JSON {location, bhk, bath, total_sqft} to get predicted price."
-    }
-
-
+@app.get("/predict", response_class=HTMLResponse)
+def load_predict_page():
+    index_file = os.path.join(os.path.dirname(__file__), "index.html")
+    with open(index_file, "r") as f:
+        return f.read()
 
 
 @app.post("/predict")
 def predict_price(data: PredictInput):
     loc = data.location.strip()
 
+    
     if loc not in location_map:
         loc = "other"
 
     loc_enc = location_map[loc]
 
+    
     has_society = 1
     balcony = 1
-    price_per_sqft = 5000  
+    price_per_sqft = 5000
 
+    
     features = np.array([[
         data.total_sqft,
         data.bath,
@@ -122,9 +135,10 @@ def predict_price(data: PredictInput):
         has_society,
         price_per_sqft,
         data.bhk,
-        0, 0, 0, 0,  
+        0, 0, 0, 0,   
         loc_enc
     ]])
 
     pred = model.predict(features)[0]
+
     return {"price_lakhs": float(pred)}
