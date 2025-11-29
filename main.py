@@ -6,6 +6,8 @@ from xgboost import XGBRegressor
 
 from fastapi.middleware.cors import CORSMiddleware
 
+from fastapi.responses import RedirectResponse
+
 
 app = FastAPI()
 
@@ -105,7 +107,7 @@ class HouseData(BaseModel):
 
 @app.get("/")
 def hello():
-    return {"message": "House Price Prediction API is running"}
+    return RedirectResponse(url="/predict")
 @app.post("/predict")
 def predict_price(data: PredictInput):
     loc = data.location.strip()
