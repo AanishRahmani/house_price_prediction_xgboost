@@ -1,7 +1,8 @@
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import RedirectResponse, HTMLResponse
-from pydantic import BaseModel
+from fastapi import FastAPI, Request, Form
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+
 import numpy as np
 from xgboost import XGBRegressor
 import os
@@ -11,19 +12,7 @@ app = FastAPI()
 
 
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],   
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-
-
-
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "trail.json")
-
 model = XGBRegressor()
 model.load_model(MODEL_PATH)
 
@@ -86,41 +75,41 @@ location_map = {
     "Panathur": 51
 }
 
+locations_sorted = sorted(location_map.keys())
 
 
 
-class PredictInput(BaseModel):
-    location: str
-    bhk: int
-    bath: int
-    total_sqft: float
+
+templates = Jinja2Templates(directory="templates")
 
 
 
 
 
-
-@app.get("/", include_in_schema=False)
-def redirect_root():
-    return RedirectResponse(url="/predict")
-
-
-@app.get("/predict", response_class=HTMLResponse)
-def load_predict_page():
-    index_file = os.path.join(os.path.dirname(__file__), "index.html")
-    with open(index_file, "r") as f:
-        return f.read()
+@app.get("/", response_class=HTMLResponse)
+async def home(request: Request):
+    """
+    Loads the HTML UI with dropdown values.
+    """
+    return templates.TemplateResponse(
+        "index.html",
+        {"request": request, "locations": locations_sorted}
+    )
 
 
 @app.post("/predict")
-def predict_price(data: PredictInput):
-    loc = data.location.strip()
+async def predict(
+    location: str = Form(...),
+    bhk: int = Form(...),
+    bath: int = Form(...),
+    total_sqft: float = Form(...)
+):
+    """
+    Predict price using the ML model, return JSON.
+    """
 
     
-    if loc not in location_map:
-        loc = "other"
-
-    loc_enc = location_map[loc]
+    loc = location_map.get(location, location_map["other"])
 
     
     has_society = 1
@@ -129,16 +118,16 @@ def predict_price(data: PredictInput):
 
     
     features = np.array([[
-        data.total_sqft,
-        data.bath,
+        total_sqft,
+        bath,
         balcony,
         has_society,
         price_per_sqft,
-        data.bhk,
-        0, 0, 0, 0,   
-        loc_enc
+        bhk,
+        0, 0, 0, 0,  
+        loc
     ]])
 
-    pred = model.predict(features)[0]
+    pred = float(model.predict(features)[0])
 
-    return {"price_lakhs": float(pred)}
+    return JSONResponse({"predicted_price": round(pred, 2)})
